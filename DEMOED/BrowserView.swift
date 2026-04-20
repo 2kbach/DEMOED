@@ -227,13 +227,6 @@ struct BrowserView: View {
     }
 }
 
-extension CaptureController {
-    func saveScreenshot(image: UIImage) {
-        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
-        Task { @MainActor in self.lastMessage = "Screenshot saved" }
-    }
-}
-
 extension UIApplication {
     var keyWindow: UIWindow? {
         connectedScenes
