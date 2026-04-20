@@ -15,11 +15,13 @@
 		48283E29935445128CE5FD88 /* CaptureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91276A4FA2155DD35E78A9A0 /* CaptureController.swift */; };
 		703E959209492587FD02577E /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 567CDDC1035C84B43372419A /* BrowserView.swift */; };
 		7A585FC777507F6DF92EEA0B /* FakeStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5EE372C0B7E935F637ACFC /* FakeStatusBar.swift */; };
+		7E981C93BB8896BFCE35ACBB /* URLHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F76AE2F7E73BE73F655F14 /* URLHistory.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1717D9FA72C8C0B68331DB68 /* DEMOEDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEMOEDApp.swift; sourceTree = "<group>"; };
 		22E994274CF57D1407E4C526 /* DEMOED.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DEMOED.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		38F76AE2F7E73BE73F655F14 /* URLHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLHistory.swift; sourceTree = "<group>"; };
 		567CDDC1035C84B43372419A /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
 		91276A4FA2155DD35E78A9A0 /* CaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureController.swift; sourceTree = "<group>"; };
 		A9DFEFDC5F5223FFB6BD848B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -58,6 +60,7 @@
 				B36305A9886A3D6C3EEC26DF /* LaunchView.swift */,
 				EC08221EB84778589C031AA9 /* RootView.swift */,
 				D532538F2A81952D8FC12D85 /* SafariView.swift */,
+				38F76AE2F7E73BE73F655F14 /* URLHistory.swift */,
 				E366E9DB179D49FBA65B4B11 /* WebView.swift */,
 			);
 			path = DEMOED;
@@ -129,6 +132,7 @@
 				383A5AF3F9D8065F34AF3E1F /* LaunchView.swift in Sources */,
 				420A4028FB23A00C6EFDED7A /* RootView.swift in Sources */,
 				1FD06C1948B16FE83A6219B8 /* SafariView.swift in Sources */,
+				7E981C93BB8896BFCE35ACBB /* URLHistory.swift in Sources */,
 				43AEC1736E6A54BA19FE20E1 /* WebView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -150,7 +154,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kevinauerbach.demoed;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -172,7 +176,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kevinauerbach.demoed;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;

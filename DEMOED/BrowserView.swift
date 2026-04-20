@@ -13,7 +13,6 @@ struct BrowserView: View {
     @State private var showStartHint = false
     @State private var toastOpacity: Double = 0
 
-    // For adaptive status bar (fullscreen mode only, can't inject JS into SFSafari)
     private var statusBarBackground: Color {
         mode == .fullscreen ? Color(web.topColor) : .black
     }
@@ -25,27 +24,19 @@ struct BrowserView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.black.ignoresSafeArea()
-
-            // Content (webview or native Safari)
-            VStack(spacing: 0) {
-                // Spacer under the fake status bar — 62pt matches FakeStatusBar height
-                Color.clear.frame(height: 62)
-                content
-            }
-            .ignoresSafeArea(.container, edges: [.top, .bottom])
-
-            // Fake status bar — pinned to top, overrides safe area
-            FakeStatusBar(tint: statusBarTint, background: statusBarBackground)
-                .animation(.easeInOut(duration: 0.25), value: web.topColor)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if capture.isRecording { capture.stopRecording() }
+            // Content fills whole screen, with fake status bar as a top safe-area inset.
+            // This layout means there's no visible boundary/stroke between them.
+            content
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    FakeStatusBar(tint: statusBarTint, background: statusBarBackground)
+                        .animation(.easeInOut(duration: 0.25), value: web.topColor)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if capture.isRecording { capture.stopRecording() }
+                        }
                 }
-                .ignoresSafeArea(.container, edges: .top)
-                .frame(maxWidth: .infinity, alignment: .top)
 
-            // Capture UI — hidden during recording AND during screenshot capture
+            // Capture controls — hidden while recording or snapping
             if showControls && !capture.isRecording && !isTakingScreenshot {
                 captureControls
                     .padding(.trailing, 12)
@@ -54,29 +45,18 @@ struct BrowserView: View {
                     .transition(.opacity)
             }
 
-            // Pre-record hint (shows before recording actually starts)
+            // Pre-record hint (flashes BEFORE recording starts so it isn't in the video)
             if showStartHint {
-                Text("Tap 9:41 to stop recording")
-                    .font(.footnote.weight(.medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.black.opacity(0.8))
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
+                toastPill(text: "Tap 9:41 to stop recording")
                     .padding(.top, 80)
                     .frame(maxWidth: .infinity, alignment: .top)
                     .transition(.opacity)
             }
 
-            // Toast — hidden during recording, screenshot, and while hint is showing
-            if !capture.isRecording && !isTakingScreenshot && !showStartHint, let msg = capture.lastMessage {
-                Text(msg)
-                    .font(.footnote.weight(.medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.black.opacity(0.75))
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
+            // Save confirmation toast
+            if !capture.isRecording && !isTakingScreenshot && !showStartHint,
+               let msg = capture.lastMessage {
+                toastPill(text: msg)
                     .opacity(toastOpacity)
                     .padding(.top, 80)
                     .frame(maxWidth: .infinity, alignment: .top)
@@ -101,12 +81,14 @@ struct BrowserView: View {
     private var content: some View {
         if mode == .fullscreen {
             WebView(initialURL: url, state: web)
+                .ignoresSafeArea(edges: .bottom)
         } else {
             SafariView(url: url, onDone: onExit)
+                .ignoresSafeArea(edges: .bottom)
         }
     }
 
-    // MARK: - Capture controls
+    // MARK: - Capture UI
 
     private var captureControls: some View {
         VStack(spacing: 10) {
@@ -137,17 +119,35 @@ struct BrowserView: View {
         }
     }
 
+    private func toastPill(text: String) -> some View {
+        Text(text)
+            .font(.footnote.weight(.medium))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.black.opacity(0.8))
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+    }
+
+    // MARK: - Actions
+
     private func takeScreenshot() {
         isTakingScreenshot = true
-        // Give SwiftUI a run loop tick to remove overlays before rendering.
+        // Wait one run loop tick so overlays are removed before rendering.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            if let window = UIApplication.shared.keyWindow {
-                let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
-                let image = renderer.image { _ in
-                    window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
-                }
-                capture.saveScreenshot(image: image)
+            guard let window = UIApplication.shared.keyWindow else {
+                isTakingScreenshot = false
+                return
             }
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = window.screen.scale
+            format.opaque = true
+            format.preferredRange = .extended
+            let renderer = UIGraphicsImageRenderer(bounds: window.bounds, format: format)
+            let image = renderer.image { _ in
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }
+            capture.saveScreenshot(image: image)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 isTakingScreenshot = false
             }
@@ -155,7 +155,6 @@ struct BrowserView: View {
     }
 
     private func startRecording() {
-        // Show the hint BEFORE recording begins so it doesn't appear in the video.
         withAnimation(.easeOut(duration: 0.2)) { showStartHint = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             withAnimation(.easeIn(duration: 0.3)) { showStartHint = false }
@@ -172,10 +171,5 @@ extension UIApplication {
             .compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)
             .first { $0.isKeyWindow }
-    }
-    var topViewController: UIViewController? {
-        var top = keyWindow?.rootViewController
-        while let presented = top?.presentedViewController { top = presented }
-        return top
     }
 }

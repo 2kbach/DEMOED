@@ -40,8 +40,12 @@ struct WebView: UIViewRepresentable {
         let web = WKWebView(frame: .zero, configuration: config)
         web.allowsBackForwardNavigationGestures = true
         web.navigationDelegate = context.coordinator
-        web.scrollView.contentInsetAdjustmentBehavior = .never
+        web.isOpaque = false
+        web.backgroundColor = .clear
+        web.scrollView.backgroundColor = .clear
+        web.scrollView.contentInsetAdjustmentBehavior = .automatic
         web.scrollView.showsVerticalScrollIndicator = false
+        web.scrollView.showsHorizontalScrollIndicator = false
         state.webView = web
         context.coordinator.observe(web)
         web.load(URLRequest(url: initialURL))
