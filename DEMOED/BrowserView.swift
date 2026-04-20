@@ -18,8 +18,14 @@ struct BrowserView: View {
             Color.black.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                FakeStatusBar()
-                    .background(Color(.systemBackground))
+                FakeStatusBar(
+                    tint: Color(web.topColor.isLight ? UIColor.black : UIColor.white),
+                    background: Color(web.topColor)
+                )
+                .animation(.easeInOut(duration: 0.25), value: web.topColor)
+                .onTapGesture {
+                    if capture.isRecording { capture.stopRecording() }
+                }
 
                 ZStack(alignment: .top) {
                     WebView(initialURL: url, state: web)
@@ -49,17 +55,20 @@ struct BrowserView: View {
 
             if capture.isRecording {
                 Button(action: { capture.stopRecording() }) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 16, height: 16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.white)
-                                .frame(width: 6, height: 6)
-                        )
+                    HStack(spacing: 6) {
+                        Circle().fill(Color.white).frame(width: 8, height: 8)
+                        Text("Stop")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.red)
+                    .clipShape(Capsule())
+                    .shadow(radius: 3)
                 }
-                .padding(.top, 66)
-                .padding(.trailing, 18)
+                .padding(.top, 70)
+                .padding(.trailing, 16)
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
 

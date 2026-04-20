@@ -1,25 +1,39 @@
 import SwiftUI
 
+// Measurements match iPhone 15/16 Pro Dynamic Island status bar:
+// Total top safe-area height ≈ 59pt. Clock/icons row sits on a ~44pt baseline
+// centered to the Dynamic Island. Time font is SF Pro 17pt semibold.
 struct FakeStatusBar: View {
-    var tint: Color = .primary
+    var tint: Color = .black
+    var background: Color = .white
 
     var body: some View {
-        HStack(alignment: .center) {
-            Text("9:41")
-                .font(.system(size: 17, weight: .semibold))
+        ZStack {
+            background.ignoresSafeArea(edges: .top)
+
+            HStack {
+                Text("9:41")
+                    .font(.system(size: 17, weight: .semibold))
+                    .kerning(0.2)
+                    .foregroundStyle(tint)
+                    .padding(.leading, 34)
+                    .frame(width: 110, alignment: .center)
+
+                Spacer()
+
+                HStack(spacing: 5) {
+                    signalBars
+                    wifiIcon
+                    batteryIcon
+                }
                 .foregroundStyle(tint)
-                .padding(.leading, 28)
-            Spacer()
-            HStack(spacing: 6) {
-                signalBars
-                wifiIcon
-                batteryIcon
+                .padding(.trailing, 22)
+                .frame(width: 110, alignment: .center)
             }
-            .foregroundStyle(tint)
-            .padding(.trailing, 20)
+            .frame(height: 22)
+            .offset(y: 4) // aligns with Dynamic Island vertical center
         }
         .frame(height: 54)
-        .padding(.top, 4)
     }
 
     private var signalBars: some View {
@@ -38,15 +52,17 @@ struct FakeStatusBar: View {
 
     private var batteryIcon: some View {
         ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 3)
+            RoundedRectangle(cornerRadius: 2.5)
                 .stroke(lineWidth: 1)
-                .frame(width: 24, height: 11)
+                .opacity(0.35)
+                .frame(width: 25, height: 12)
             RoundedRectangle(cornerRadius: 1.5)
-                .frame(width: 20, height: 7)
-                .padding(.leading, 1.5)
+                .frame(width: 21, height: 8)
+                .padding(.leading, 2)
             Rectangle()
                 .frame(width: 1.5, height: 4)
-                .offset(x: 24.5)
+                .opacity(0.35)
+                .offset(x: 25.5)
         }
     }
 }
