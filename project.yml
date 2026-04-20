@@ -28,7 +28,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.kevinauerbach.demoed
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: "HN9QC35Q26"
         CODE_SIGN_STYLE: Automatic
         MARKETING_VERSION: "1.2.0"
         CURRENT_PROJECT_VERSION: "2"
