@@ -8,71 +8,68 @@ struct BrowserView: View {
 
     @StateObject private var web = WebState()
     @StateObject private var capture = CaptureController()
-    @State private var addressText: String = ""
-    @State private var editingAddress = false
     @State private var showControls = true
+    @State private var isTakingScreenshot = false
+    @State private var showStartHint = false
     @State private var toastOpacity: Double = 0
+
+    // For adaptive status bar (fullscreen mode only, can't inject JS into SFSafari)
+    private var statusBarBackground: Color {
+        mode == .fullscreen ? Color(web.topColor) : .black
+    }
+    private var statusBarTint: Color {
+        mode == .fullscreen
+            ? Color(web.topColor.isLight ? UIColor.black : UIColor.white)
+            : .white
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
 
+            // Content (webview or native Safari)
             VStack(spacing: 0) {
-                FakeStatusBar(
-                    tint: Color(web.topColor.isLight ? UIColor.black : UIColor.white),
-                    background: Color(web.topColor)
-                )
+                // Spacer under the fake status bar — 62pt matches FakeStatusBar height
+                Color.clear.frame(height: 62)
+                content
+            }
+            .ignoresSafeArea(.container, edges: [.top, .bottom])
+
+            // Fake status bar — pinned to top, overrides safe area
+            FakeStatusBar(tint: statusBarTint, background: statusBarBackground)
                 .animation(.easeInOut(duration: 0.25), value: web.topColor)
+                .contentShape(Rectangle())
                 .onTapGesture {
                     if capture.isRecording { capture.stopRecording() }
                 }
+                .ignoresSafeArea(.container, edges: .top)
+                .frame(maxWidth: .infinity, alignment: .top)
 
-                ZStack(alignment: .top) {
-                    WebView(initialURL: url, state: web)
-                        .ignoresSafeArea(edges: .bottom)
-
-                    if web.isLoading {
-                        ProgressView(value: web.progress)
-                            .progressViewStyle(.linear)
-                            .tint(.blue)
-                            .frame(height: 2)
-                    }
-                }
-
-                if mode == .withChrome {
-                    safariChrome
-                        .background(.ultraThinMaterial)
-                }
-            }
-
-            if showControls && !capture.isRecording {
+            // Capture UI — hidden during recording AND during screenshot capture
+            if showControls && !capture.isRecording && !isTakingScreenshot {
                 captureControls
                     .padding(.trailing, 12)
-                    .padding(.top, 60)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 76)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .transition(.opacity)
             }
 
-            if capture.isRecording {
-                Button(action: { capture.stopRecording() }) {
-                    HStack(spacing: 6) {
-                        Circle().fill(Color.white).frame(width: 8, height: 8)
-                        Text("Stop")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 12)
+            // Pre-record hint (shows before recording actually starts)
+            if showStartHint {
+                Text("Tap 9:41 to stop recording")
+                    .font(.footnote.weight(.medium))
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(Color.red)
+                    .background(.black.opacity(0.8))
+                    .foregroundStyle(.white)
                     .clipShape(Capsule())
-                    .shadow(radius: 3)
-                }
-                .padding(.top, 70)
-                .padding(.trailing, 16)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 80)
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .transition(.opacity)
             }
 
-            if let msg = capture.lastMessage {
+            // Toast — hidden during recording, screenshot, and while hint is showing
+            if !capture.isRecording && !isTakingScreenshot && !showStartHint, let msg = capture.lastMessage {
                 Text(msg)
                     .font(.footnote.weight(.medium))
                     .padding(.horizontal, 14)
@@ -81,7 +78,8 @@ struct BrowserView: View {
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
                     .opacity(toastOpacity)
-                    .padding(.top, 70)
+                    .padding(.top, 80)
+                    .frame(maxWidth: .infinity, alignment: .top)
                     .onChange(of: capture.lastMessage) { _, _ in
                         withAnimation(.easeOut(duration: 0.2)) { toastOpacity = 1 }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -94,13 +92,21 @@ struct BrowserView: View {
             withAnimation { showControls.toggle() }
         }
         .statusBarHidden(true)
-        .onAppear {
-            addressText = url.absoluteString
-        }
-        .onChange(of: web.currentURL) { _, new in
-            if !editingAddress, let new { addressText = new.absoluteString }
+        .persistentSystemOverlays(.hidden)
+    }
+
+    // MARK: - Content
+
+    @ViewBuilder
+    private var content: some View {
+        if mode == .fullscreen {
+            WebView(initialURL: url, state: web)
+        } else {
+            SafariView(url: url, onDone: onExit)
         }
     }
+
+    // MARK: - Capture controls
 
     private var captureControls: some View {
         VStack(spacing: 10) {
@@ -112,7 +118,7 @@ struct BrowserView: View {
                     .background(Color.black.opacity(0.55))
                     .clipShape(Circle())
             }
-            Button(action: { capture.startRecording() }) {
+            Button(action: startRecording) {
                 Image(systemName: "record.circle")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.red)
@@ -132,9 +138,9 @@ struct BrowserView: View {
     }
 
     private func takeScreenshot() {
-        // Hide the capture controls before snapping so they don't appear in the image.
-        withAnimation(.none) { showControls = false }
-        DispatchQueue.main.async {
+        isTakingScreenshot = true
+        // Give SwiftUI a run loop tick to remove overlays before rendering.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             if let window = UIApplication.shared.keyWindow {
                 let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
                 let image = renderer.image { _ in
@@ -142,88 +148,21 @@ struct BrowserView: View {
                 }
                 capture.saveScreenshot(image: image)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation { showControls = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                isTakingScreenshot = false
             }
         }
     }
 
-    private var safariChrome: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 14, weight: .semibold))
-                TextField("Search or enter website", text: $addressText, onEditingChanged: { editing in
-                    editingAddress = editing
-                    if editing { addressText = web.currentURL?.absoluteString ?? addressText }
-                }, onCommit: submitAddress)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .submitLabel(.go)
-                    .foregroundStyle(.primary)
-                if web.isLoading {
-                    Button(action: { web.stop() }) {
-                        Image(systemName: "xmark")
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Button(action: { web.reload() }) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-
-            HStack {
-                Button(action: { web.goBack() }) {
-                    Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
-                }.disabled(!web.canGoBack)
-                Spacer()
-                Button(action: { web.goForward() }) {
-                    Image(systemName: "chevron.right").font(.system(size: 20, weight: .semibold))
-                }.disabled(!web.canGoForward)
-                Spacer()
-                Button(action: share) {
-                    Image(systemName: "square.and.arrow.up").font(.system(size: 20, weight: .semibold))
-                }
-                Spacer()
-                Image(systemName: "book").font(.system(size: 20, weight: .semibold)).foregroundStyle(.secondary.opacity(0.4))
-                Spacer()
-                Image(systemName: "square.on.square").font(.system(size: 20, weight: .semibold)).foregroundStyle(.secondary.opacity(0.4))
-            }
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 24)
-            .padding(.top, 10)
-            .padding(.bottom, 20)
-        }
-    }
-
-    private func submitAddress() {
-        var s = addressText.trimmingCharacters(in: .whitespaces)
-        if s.isEmpty { return }
-        if !s.lowercased().hasPrefix("http") {
-            if s.contains(" ") || !s.contains(".") {
-                s = "https://www.google.com/search?q=" + (s.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? s)
-            } else {
-                s = "https://" + s
+    private func startRecording() {
+        // Show the hint BEFORE recording begins so it doesn't appear in the video.
+        withAnimation(.easeOut(duration: 0.2)) { showStartHint = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation(.easeIn(duration: 0.3)) { showStartHint = false }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                capture.startRecording()
             }
         }
-        if let u = URL(string: s) { web.load(u) }
-        editingAddress = false
-    }
-
-    private func share() {
-        guard let u = web.currentURL else { return }
-        let av = UIActivityViewController(activityItems: [u], applicationActivities: nil)
-        UIApplication.shared.topViewController?.present(av, animated: true)
     }
 }
 

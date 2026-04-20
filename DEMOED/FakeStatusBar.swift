@@ -1,68 +1,80 @@
 import SwiftUI
 
-// Measurements match iPhone 15/16 Pro Dynamic Island status bar:
-// Total top safe-area height ≈ 59pt. Clock/icons row sits on a ~44pt baseline
-// centered to the Dynamic Island. Time font is SF Pro 17pt semibold.
+// Dimensions pulled directly from Figma status bar component (node 1720:1721):
+// 402x62 frame, 21pt top / 19pt bottom / 16pt horizontal padding,
+// 154pt gap between Time (flex-1) and Levels (flex-1), each side centered,
+// SF Pro Semibold 17pt / 22pt line-height.
 struct FakeStatusBar: View {
-    var tint: Color = .black
-    var background: Color = .white
+    var tint: Color = .white
+    var background: Color = .black
 
     var body: some View {
         ZStack {
-            background.ignoresSafeArea(edges: .top)
-
-            HStack {
+            background
+            HStack(spacing: 154) {
+                // Time side
                 Text("9:41")
                     .font(.system(size: 17, weight: .semibold))
-                    .kerning(0.2)
                     .foregroundStyle(tint)
-                    .padding(.leading, 34)
-                    .frame(width: 110, alignment: .center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 22)
 
-                Spacer()
-
-                HStack(spacing: 5) {
-                    signalBars
+                // Levels side
+                HStack(spacing: 7) {
+                    cellularIcon
                     wifiIcon
                     batteryIcon
                 }
                 .foregroundStyle(tint)
-                .padding(.trailing, 22)
-                .frame(width: 110, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(height: 22)
             }
-            .frame(height: 22)
-            .offset(y: 4) // aligns with Dynamic Island vertical center
+            .padding(.horizontal, 16)
+            .padding(.top, 21)
+            .padding(.bottom, 19)
         }
-        .frame(height: 54)
+        .frame(height: 62)
     }
 
-    private var signalBars: some View {
+    // 19.2 x 12.226 — four ascending bars
+    private var cellularIcon: some View {
         HStack(alignment: .bottom, spacing: 2) {
-            ForEach(0..<4) { i in
-                RoundedRectangle(cornerRadius: 1)
-                    .frame(width: 3, height: CGFloat(4 + i * 2))
-            }
+            bar(height: 4)
+            bar(height: 6.5)
+            bar(height: 9)
+            bar(height: 12)
         }
+        .frame(width: 19.2, height: 12.226)
     }
 
+    private func bar(height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 0.8)
+            .frame(width: 3, height: height)
+    }
+
+    // 17.142 x 12.328
     private var wifiIcon: some View {
         Image(systemName: "wifi")
             .font(.system(size: 15, weight: .semibold))
+            .frame(width: 17.142, height: 12.328)
     }
 
+    // 27.328 x 13 — body with cap on right
     private var batteryIcon: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 2.5)
-                .stroke(lineWidth: 1)
-                .opacity(0.35)
-                .frame(width: 25, height: 12)
-            RoundedRectangle(cornerRadius: 1.5)
-                .frame(width: 21, height: 8)
-                .padding(.leading, 2)
-            Rectangle()
-                .frame(width: 1.5, height: 4)
-                .opacity(0.35)
-                .offset(x: 25.5)
+        HStack(spacing: 1) {
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 3)
+                    .strokeBorder(lineWidth: 1)
+                    .opacity(0.4)
+                RoundedRectangle(cornerRadius: 2)
+                    .padding(1.5)
+            }
+            .frame(width: 25, height: 13)
+
+            RoundedRectangle(cornerRadius: 0.5)
+                .frame(width: 1.5, height: 4.5)
+                .opacity(0.4)
         }
+        .frame(width: 27.328, height: 13)
     }
 }

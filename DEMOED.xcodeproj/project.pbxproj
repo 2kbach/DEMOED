@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1FD06C1948B16FE83A6219B8 /* SafariView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D532538F2A81952D8FC12D85 /* SafariView.swift */; };
 		26776D82722C2C5634622FF6 /* DEMOEDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1717D9FA72C8C0B68331DB68 /* DEMOEDApp.swift */; };
 		383A5AF3F9D8065F34AF3E1F /* LaunchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36305A9886A3D6C3EEC26DF /* LaunchView.swift */; };
 		420A4028FB23A00C6EFDED7A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC08221EB84778589C031AA9 /* RootView.swift */; };
@@ -23,6 +24,7 @@
 		91276A4FA2155DD35E78A9A0 /* CaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureController.swift; sourceTree = "<group>"; };
 		A9DFEFDC5F5223FFB6BD848B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B36305A9886A3D6C3EEC26DF /* LaunchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchView.swift; sourceTree = "<group>"; };
+		D532538F2A81952D8FC12D85 /* SafariView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariView.swift; sourceTree = "<group>"; };
 		E366E9DB179D49FBA65B4B11 /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
 		EC08221EB84778589C031AA9 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		FA5EE372C0B7E935F637ACFC /* FakeStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeStatusBar.swift; sourceTree = "<group>"; };
@@ -55,6 +57,7 @@
 				A9DFEFDC5F5223FFB6BD848B /* Info.plist */,
 				B36305A9886A3D6C3EEC26DF /* LaunchView.swift */,
 				EC08221EB84778589C031AA9 /* RootView.swift */,
+				D532538F2A81952D8FC12D85 /* SafariView.swift */,
 				E366E9DB179D49FBA65B4B11 /* WebView.swift */,
 			);
 			path = DEMOED;
@@ -125,6 +128,7 @@
 				7A585FC777507F6DF92EEA0B /* FakeStatusBar.swift in Sources */,
 				383A5AF3F9D8065F34AF3E1F /* LaunchView.swift in Sources */,
 				420A4028FB23A00C6EFDED7A /* RootView.swift in Sources */,
+				1FD06C1948B16FE83A6219B8 /* SafariView.swift in Sources */,
 				43AEC1736E6A54BA19FE20E1 /* WebView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -146,7 +150,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kevinauerbach.demoed;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -168,7 +172,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kevinauerbach.demoed;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
