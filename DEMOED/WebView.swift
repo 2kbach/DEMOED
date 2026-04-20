@@ -11,7 +11,20 @@ final class WebState: ObservableObject {
     @Published var title: String = ""
     @Published var topColor: UIColor = .white
 
-    weak var webView: WKWebView?
+    var preferredTopInset: CGFloat = 0 {
+        didSet { applyInset() }
+    }
+
+    weak var webView: WKWebView? {
+        didSet { applyInset() }
+    }
+
+    private func applyInset() {
+        guard let sv = webView?.scrollView else { return }
+        sv.contentInset.top = preferredTopInset
+        sv.verticalScrollIndicatorInsets.top = preferredTopInset
+        if sv.contentOffset.y == 0 { sv.contentOffset.y = -preferredTopInset }
+    }
 
     func load(_ url: URL) { webView?.load(URLRequest(url: url)) }
     func goBack() { webView?.goBack() }

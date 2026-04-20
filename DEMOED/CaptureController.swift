@@ -22,51 +22,25 @@ final class CaptureController: ObservableObject {
         }
     }
 
-    // MARK: - Recording (AVAssetWriter for full native resolution)
-
     func startRecording() {
         guard !recorder.isRecording else { return }
 
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("DEMOED-\(Int(Date().timeIntervalSince1970)).mp4")
         try? FileManager.default.removeItem(at: fileURL)
-
-        let scale = UIScreen.main.scale
-        let bounds = UIScreen.main.bounds
-        let width = Int(bounds.width * scale)
-        let height = Int(bounds.height * scale)
-
-        do {
-            let w = try AVAssetWriter(outputURL: fileURL, fileType: .mp4)
-            let compression: [String: Any] = [
-                AVVideoAverageBitRateKey: 25_000_000,
-                AVVideoExpectedSourceFrameRateKey: 60,
-                AVVideoMaxKeyFrameIntervalKey: 60,
-                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
-            ]
-            let settings: [String: Any] = [
-                AVVideoCodecKey: AVVideoCodecType.h264,
-                AVVideoWidthKey: width,
-                AVVideoHeightKey: height,
-                AVVideoCompressionPropertiesKey: compression,
-            ]
-            let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
-            input.expectsMediaDataInRealTime = true
-            w.add(input)
-            self.writer = w
-            self.videoInput = input
-            self.sessionStarted = false
-            self.outputURL = fileURL
-        } catch {
-            post("Setup failed: \(error.localizedDescription)")
-            return
-        }
+        self.outputURL = fileURL
+        self.sessionStarted = false
+        self.writer = nil
+        self.videoInput = nil
 
         recorder.isMicrophoneEnabled = false
         recorder.startCapture { [weak self] buffer, type, error in
             guard let self, error == nil, type == .video else { return }
             guard CMSampleBufferDataIsReady(buffer) else { return }
             self.writeQueue.async {
+                if self.writer == nil {
+                    self.createWriter(for: buffer)
+                }
                 guard let w = self.writer, let input = self.videoInput else { return }
                 if !self.sessionStarted {
                     if w.startWriting() {
@@ -85,6 +59,40 @@ final class CaptureController: ObservableObject {
             } else {
                 self.post("Recording…", recording: true)
             }
+        }
+    }
+
+    // Lazily create writer using the first buffer's actual pixel dimensions.
+    // This ensures we write at whatever resolution ReplayKit delivers,
+    // with no downscaling or letterboxing.
+    private func createWriter(for buffer: CMSampleBuffer) {
+        guard let fileURL = outputURL,
+              let fmt = CMSampleBufferGetFormatDescription(buffer) else { return }
+        let dims = CMVideoFormatDescriptionGetDimensions(fmt)
+        let width = Int(dims.width)
+        let height = Int(dims.height)
+
+        do {
+            let w = try AVAssetWriter(outputURL: fileURL, fileType: .mp4)
+            let compression: [String: Any] = [
+                AVVideoAverageBitRateKey: 50_000_000,
+                AVVideoExpectedSourceFrameRateKey: 60,
+                AVVideoMaxKeyFrameIntervalKey: 60,
+                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
+            ]
+            let settings: [String: Any] = [
+                AVVideoCodecKey: AVVideoCodecType.h264,
+                AVVideoWidthKey: width,
+                AVVideoHeightKey: height,
+                AVVideoCompressionPropertiesKey: compression,
+            ]
+            let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+            input.expectsMediaDataInRealTime = true
+            if w.canAdd(input) { w.add(input) }
+            self.writer = w
+            self.videoInput = input
+        } catch {
+            post("Writer setup failed: \(error.localizedDescription)")
         }
     }
 
@@ -133,8 +141,6 @@ final class CaptureController: ObservableObject {
             }
         }
     }
-
-    // MARK: - Screenshot
 
     func saveScreenshot(image: UIImage) {
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)

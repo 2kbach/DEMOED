@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+@preconcurrency import WebKit
 
 struct BrowserView: View {
     let url: URL
@@ -24,19 +25,18 @@ struct BrowserView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Content fills whole screen, with fake status bar as a top safe-area inset.
-            // This layout means there's no visible boundary/stroke between them.
             content
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    FakeStatusBar(tint: statusBarTint, background: statusBarBackground)
-                        .animation(.easeInOut(duration: 0.25), value: web.topColor)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if capture.isRecording { capture.stopRecording() }
-                        }
-                }
+                .ignoresSafeArea()
 
-            // Capture controls — hidden while recording or snapping
+            FakeStatusBar(tint: statusBarTint, background: statusBarBackground)
+                .animation(.easeInOut(duration: 0.25), value: web.topColor)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if capture.isRecording { capture.stopRecording() }
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
+                .ignoresSafeArea(.all, edges: .top)
+
             if showControls && !capture.isRecording && !isTakingScreenshot {
                 captureControls
                     .padding(.trailing, 12)
@@ -45,7 +45,6 @@ struct BrowserView: View {
                     .transition(.opacity)
             }
 
-            // Pre-record hint (flashes BEFORE recording starts so it isn't in the video)
             if showStartHint {
                 toastPill(text: "Tap 9:41 to stop recording")
                     .padding(.top, 80)
@@ -53,7 +52,6 @@ struct BrowserView: View {
                     .transition(.opacity)
             }
 
-            // Save confirmation toast
             if !capture.isRecording && !isTakingScreenshot && !showStartHint,
                let msg = capture.lastMessage {
                 toastPill(text: msg)
@@ -73,22 +71,17 @@ struct BrowserView: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .onAppear { web.preferredTopInset = 62 }
     }
-
-    // MARK: - Content
 
     @ViewBuilder
     private var content: some View {
         if mode == .fullscreen {
             WebView(initialURL: url, state: web)
-                .ignoresSafeArea(edges: .bottom)
         } else {
             SafariView(url: url, onDone: onExit)
-                .ignoresSafeArea(edges: .bottom)
         }
     }
-
-    // MARK: - Capture UI
 
     private var captureControls: some View {
         VStack(spacing: 10) {
@@ -129,28 +122,73 @@ struct BrowserView: View {
             .clipShape(Capsule())
     }
 
-    // MARK: - Actions
+    // MARK: - Screenshot
 
     private func takeScreenshot() {
         isTakingScreenshot = true
-        // Wait one run loop tick so overlays are removed before rendering.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             guard let window = UIApplication.shared.keyWindow else {
                 isTakingScreenshot = false
                 return
             }
+            if mode == .fullscreen, let wk = web.webView {
+                snapshotFullscreen(webView: wk, window: window)
+            } else {
+                capture.saveScreenshot(image: renderWindow(window))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    isTakingScreenshot = false
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func snapshotFullscreen(webView: WKWebView, window: UIWindow) {
+        let config = WKSnapshotConfiguration()
+        config.afterScreenUpdates = true
+        // snapshotWidth nil = use webView's actual width for native resolution
+        webView.takeSnapshot(with: config) { [statusBarTint, statusBarBackground] snapshot, _ in
+            let scale = window.screen.scale
+            let windowSize = window.bounds.size
+
+            // Render fake status bar into a UIImage at native scale
+            let barRenderer = ImageRenderer(
+                content: FakeStatusBar(tint: statusBarTint, background: statusBarBackground)
+                    .frame(width: windowSize.width, height: 62)
+            )
+            barRenderer.scale = scale
+            let barImage = barRenderer.uiImage
+
             let format = UIGraphicsImageRendererFormat()
-            format.scale = window.screen.scale
+            format.scale = scale
             format.opaque = true
             format.preferredRange = .extended
-            let renderer = UIGraphicsImageRenderer(bounds: window.bounds, format: format)
-            let image = renderer.image { _ in
-                window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            let renderer = UIGraphicsImageRenderer(size: windowSize, format: format)
+            let composed = renderer.image { _ in
+                // Draw the webview snapshot filling the whole window (it was
+                // already sized to fit under the status bar)
+                if let snapshot {
+                    let origin = CGPoint(x: 0, y: webView.frame.origin.y)
+                    snapshot.draw(in: CGRect(origin: origin, size: webView.bounds.size))
+                }
+                // Draw the fake status bar at the top
+                barImage?.draw(in: CGRect(x: 0, y: 0, width: windowSize.width, height: 62))
             }
-            capture.saveScreenshot(image: image)
+            capture.saveScreenshot(image: composed)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 isTakingScreenshot = false
             }
+        }
+    }
+
+    private func renderWindow(_ window: UIWindow) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = window.screen.scale
+        format.opaque = true
+        format.preferredRange = .extended
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds, format: format)
+        return renderer.image { ctx in
+            window.layer.render(in: ctx.cgContext)
         }
     }
 
