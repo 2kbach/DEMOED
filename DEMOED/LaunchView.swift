@@ -70,7 +70,7 @@ struct LaunchView: View {
                     .disabled(!canStart)
 
                     Spacer(minLength: 12)
-                    Text("v1.3.1")
+                    Text("v1.4.0")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
